@@ -60,6 +60,9 @@ class BannerService : Service() {
     // NSD (Network Service Discovery)
     private lateinit var nsdManager: NsdManager
     private var serviceName: String? = null
+    
+    // Overlay permission fallback
+    private var useActivityOverlay = false
 
     companion object {
         const val SERVER_PORT = 8080
@@ -226,25 +229,31 @@ class BannerService : Service() {
 
         when (action) {
             is BannerAction.Show -> {
-                if (action.displayCount == -1) {
-                    // Modo continuo
-                    bannerState.value = action
-                    Log.d(TAG, "♾️ Banner en modo continuo")
+                if (useActivityOverlay) {
+                    // Usar BannerOverlayActivity como fallback
+                    showBannerViaActivity(action)
                 } else {
-                    // Modo con repeticiones
-                    displayJob = serviceScope.launch {
-                        repeat(action.displayCount) { index ->
-                            bannerState.value = action
-                            Log.d(TAG, "✅ Mostrando banner (${index + 1}/${action.displayCount})")
-                            delay(BANNER_DISPLAY_DURATION_MS)
-                            
-                            bannerState.value = null
-                            
-                            if (index < action.displayCount - 1) {
-                                delay(1000) // Pausa entre repeticiones
+                    // Usar overlay tradicional
+                    if (action.displayCount == -1) {
+                        // Modo continuo
+                        bannerState.value = action
+                        Log.d(TAG, "♾️ Banner en modo continuo")
+                    } else {
+                        // Modo con repeticiones
+                        displayJob = serviceScope.launch {
+                            repeat(action.displayCount) { index ->
+                                bannerState.value = action
+                                Log.d(TAG, "✅ Mostrando banner (${index + 1}/${action.displayCount})")
+                                delay(BANNER_DISPLAY_DURATION_MS)
+                                
+                                bannerState.value = null
+                                
+                                if (index < action.displayCount - 1) {
+                                    delay(1000) // Pausa entre repeticiones
+                                }
                             }
+                            Log.d(TAG, "🏁 Banner completado")
                         }
-                        Log.d(TAG, "🏁 Banner completado")
                     }
                 }
             }
@@ -252,6 +261,36 @@ class BannerService : Service() {
                 bannerState.value = null
                 Log.d(TAG, "🙈 Banner ocultado")
             }
+        }
+    }
+    
+    private fun showBannerViaActivity(banner: BannerAction.Show) {
+        try {
+            val intent = Intent(this, BannerOverlayActivity::class.java).apply {
+                putExtra(BannerOverlayActivity.EXTRA_CONTENT, banner.content)
+                putExtra(BannerOverlayActivity.EXTRA_TYPE, banner.type)
+                putExtra(BannerOverlayActivity.EXTRA_SHOW_EFFECTS, banner.showEffects)
+                putExtra(BannerOverlayActivity.EXTRA_DURATION_MS, BANNER_DISPLAY_DURATION_MS)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            
+            if (banner.displayCount == -1) {
+                // Modo continuo: mostrar una vez y repetir
+                Log.d(TAG, "♾️ Banner continuo via Activity (limitado a 1 vez)")
+                startActivity(intent)
+            } else {
+                // Modo con repeticiones
+                serviceScope.launch {
+                    repeat(banner.displayCount) { index ->
+                        Log.d(TAG, "✅ Mostrando banner via Activity (${index + 1}/${banner.displayCount})")
+                        startActivity(intent)
+                        delay(BANNER_DISPLAY_DURATION_MS + 1000) // Esperar duración + pausa
+                    }
+                    Log.d(TAG, "🏁 Banner completado via Activity")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error mostrando banner via Activity: ${e.message}")
         }
     }
 
@@ -285,9 +324,16 @@ class BannerService : Service() {
         
         try {
             windowManager.addView(bannerView, params)
-            Log.d(TAG, "✅ Vista del banner añadida")
+            useActivityOverlay = false
+            Log.d(TAG, "✅ Vista del banner añadida (overlay tradicional)")
+        } catch (e: SecurityException) {
+            Log.w(TAG, "⚠️ SYSTEM_ALERT_WINDOW bloqueado. Usando Activity overlay como fallback.")
+            useActivityOverlay = true
+            bannerView = null // No usar la vista si no tenemos permiso
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error añadiendo vista: ${e.message}")
+            useActivityOverlay = true
+            bannerView = null
         }
     }
 

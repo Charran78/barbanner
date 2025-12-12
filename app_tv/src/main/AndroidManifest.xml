@@ -37,6 +37,14 @@
             </intent-filter>
         </activity>
 
+        <!-- Activity overlay transparente (fallback para permiso bloqueado) -->
+        <activity
+            android:name=".BannerOverlayActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop" />
+
         <!-- Servicio de Banner -->
         <service
             android:name=".BannerService"
