@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Banner de Avisos para TV (Bar)</title>
+    <!-- Carga de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configuración de la fuente Inter -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; height: 100vh; margin: 0; display: flex; flex-direction: column; }
+        
+        /* Definición de la animación de marquesina */
+        @keyframes marquee {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+        
+        .marquee {
+            white-space: nowrap;
+            overflow: hidden;
+            /* Variable CSS para la duración (se ajusta en JS) */
+            --marquee-duration: 30s; 
+            /* REVERTIDO a la animación base, pero con velocidad dinámica */
+            animation: marquee var(--marquee-duration) linear infinite;
+            padding: 0 100vw; /* Espacio extra para que el texto aparezca y desaparezca suavemente */
+        }
+        
+        /* Estilos de fondo y texto según el tipo de alerta */
+        .alert-oferta { background-color: #f59e0b; color: white; } /* Naranja/Ámbar para Ofertas */
+        .alert-tapa { background-color: #10b981; color: white; } /* Esmeralda/Verde para Tapas */
+        .alert-lotería { background-color: #ef4444; color: white; } /* Rojo para Lotería */
+        .alert-evento { background-color: #3b82f6; color: white; } /* Azul para Eventos */
+        .alert-personal { background-color: #8b5cf6; color: white; } /* Púrpura para Personal */
+        .alert-otros { background-color: #6b7280; color: white; } /* Gris para Otros */
+
+        /* Estilo para simular el overlay sobre el resto de contenido */
+        #tv-screen {
+            position: relative;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #content-area {
+            height: 85vh; /* 85% para el contenido simulado (YouTube, Retransmisión, etc.) */
+            background-color: #1f2937; /* Gris oscuro para simular un programa */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #d1d5db;
+            font-size: 1.5rem;
+            text-align: center;
+        }
+
+        #banner-container {
+            height: 15vh; /* 15% para el banner de marquesina */
+            width: 100%;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            z-index: 100; /* Asegura que esté encima de todo */
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+    <!-- Sección de la Pantalla de TV (CLIENTE) -->
+    <div id="tv-screen">
+        <div id="content-area">
+            <!-- Simulación de contenido de TV (Retransmisión deportiva, YouTube, etc.) -->
+            <p>📺 Reproduciendo Contenido de TV (85% de la Pantalla)</p>
+            <p class="text-sm mt-4 text-gray-400">(En la aplicación Android real, el banner aparecería sobre este contenido gracias al permiso SYSTEM_ALERT_WINDOW)</p>
+        </div>
+
+        <!-- Contenedor del Banner de Marquesina (15% de la Pantalla) -->
+        <div id="banner-container" class="shadow-2xl flex items-center">
+            <div id="banner-content" class="marquee text-3xl font-bold uppercase p-4 flex items-center w-full h-full rounded-none">
+                <!-- El contenido de la marquesina se inyectará aquí -->
+                <span class="text-yellow-300">Cargando datos... Bienvenido al Sistema de Avisos.</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Panel de Control (SERVIDOR - Simulado en el Teléfono) -->
+    <div class="fixed top-0 right-0 p-4 bg-white shadow-xl w-full md:w-80 h-full overflow-y-auto z-20 transition-transform transform translate-x-0" id="control-panel">
+        <h2 class="text-2xl font-black mb-4 text-gray-800 border-b pb-2">⚙️ Panel de Control del Bar</h2>
+        <p class="text-sm text-gray-500 mb-4">Actualiza el banner de la TV en tiempo real.</p>
+        
+        <label for="barName" class="block text-sm font-medium text-gray-700">Nombre del Bar</label>
+        <input type="text" id="barName" value="Mi Rincón Favorito" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 mb-4">
+        
+        <label for="alertContent" class="block text-sm font-medium text-gray-700">Contenido del Aviso (Marquesina)</label>
+        <textarea id="alertContent" rows="3" placeholder="Escribe tu promoción, evento o aviso importante..." class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 mb-4 resize-none">¡Hoy! 🍻 Caña y tapa de la abuela por solo 3€. ¡Te esperamos!</textarea>
+
+        <label for="alertType" class="block text-sm font-medium text-gray-700">Tipo de Aviso</label>
+        <select id="alertType" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 mb-4 bg-white">
+            <option value="TAPA">Tapas del Día</option>
+            <option value="OFERTA">Ofertas / Promociones</option>
+            <option value="EVENTO">Eventos Deportivos</option>
+            <option value="LOTERÍA">Lotería Disponible</option>
+            <option value="PERSONAL">Eventos Personales</option>
+            <option value="OTROS">Otros Avisos</option>
+        </select>
+
+        <label for="imageURL" class="block text-sm font-medium text-gray-700">URL de Imagen (Opcional)</label>
+        <input type="text" id="imageURL" placeholder="Ej: https://placehold.co/100x100/38a169/ffffff?text=TAPA" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 mb-6">
+        
+        <button onclick="publishBannerUpdate()" class="w-full py-3 px-4 border border-transparent rounded-lg shadow-lg text-lg font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out">
+            Guardar y Publicar en TV
+        </button>
+
+        <div id="statusMessage" class="mt-4 p-3 text-sm bg-gray-100 rounded-lg text-gray-600 hidden"></div>
+        <div class="mt-8 pt-4 border-t">
+            <p class="text-xs text-gray-400">ID de Usuario: <span id="userIdDisplay">Cargando...</span></p>
+        </div>
+    </div>
+
+
+    <!-- Sección de Lógica de JavaScript y Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Habilitar logs de depuración para Firestore
+        setLogLevel('Debug');
+
+        // --- Configuración de Variables Globales (MANDATORIO) ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        let app, db, auth;
+        let userId = 'loading';
+        let isAuthReady = false;
+
+        // --- Funciones de Utilidad para Firebase ---
+        function getBannerDocRef(db, currentUserId) {
+            // Utilizamos una ruta pública para que el cliente (TV) y el servidor (Teléfono) puedan sincronizarse.
+            // La ruta es: /artifacts/{appId}/public/data/banners/bar_banner_01
+            return doc(db, 'artifacts', appId, 'public', 'data', 'banners', 'bar_banner_01');
+        }
+
+        async function initFirebase() {
+            try {
+                if (Object.keys(firebaseConfig).length === 0) {
+                    console.error("Firebase config is missing. Cannot initialize Firebase.");
+                    document.getElementById('statusMessage').textContent = "ERROR: Configuración de Firebase no disponible.";
+                    return;
+                }
+
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        document.getElementById('userIdDisplay').textContent = userId.substring(0, 8) + '...'; // Mostrar solo un fragmento
+                        isAuthReady = true;
+                        // Una vez autenticado, iniciamos el listener para el banner (CLIENTE/TV)
+                        setupBannerListener();
+                    } else {
+                        // Intentar autenticar de forma anónima si el token inicial no está disponible
+                        try {
+                            if (initialAuthToken) {
+                                await signInWithCustomToken(auth, initialAuthToken);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                        } catch (error) {
+                            console.error("Error during Firebase sign-in:", error);
+                            document.getElementById('statusMessage').textContent = "ERROR de Autenticación: " + error.message;
+                        }
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error initializing Firebase:", error);
+            }
+        }
+
+        // --- Lógica del Servidor (Panel de Control/Teléfono) ---
+
+        /**
+         * Llama a la API de Gemini para clasificar el contenido y genera el formato final.
+         * Luego guarda los datos en Firestore.
+         */
+        window.publishBannerUpdate = async () => {
+            if (!isAuthReady || !db) {
+                console.error("Firebase not ready or user not authenticated.");
+                document.getElementById('statusMessage').textContent = "Esperando la conexión de Firebase...";
+                return;
+            }
+
+            const barName = document.getElementById('barName').value.trim();
+            const alertContent = document.getElementById('alertContent').value.trim();
+            const alertType = document.getElementById('alertType').value;
+            const imageURL = document.getElementById('imageURL').value.trim();
+            const statusDiv = document.getElementById('statusMessage');
+            
+            if (!alertContent || !barName) {
+                statusDiv.textContent = "El nombre del bar y el contenido del aviso son obligatorios.";
+                statusDiv.classList.remove('hidden');
+                return;
+            }
+
+            statusDiv.textContent = "Publicando aviso... Procesando con Gemini para el formato...";
+            statusDiv.classList.remove('hidden', 'bg-red-100', 'text-red-700');
+            statusDiv.classList.add('bg-yellow-100', 'text-yellow-700');
+
+
+            // 1. Estructura de datos para guardar en Firestore
+            const bannerData = {
+                barName: barName,
+                alertType: alertType,
+                content: alertContent,
+                imageUrl: imageURL,
+                timestamp: Date.now()
+            };
+
+            // 2. Guardar los datos en Firestore (Sincronización en tiempo real)
+            try {
+                const docRef = getBannerDocRef(db, userId);
+                await setDoc(docRef, bannerData);
+
+                statusDiv.textContent = "✅ ¡Aviso publicado y sincronizado con la TV!";
+                statusDiv.classList.remove('bg-yellow-100', 'text-yellow-700');
+                statusDiv.classList.add('bg-green-100', 'text-green-700');
+            } catch (error) {
+                console.error("Error al guardar en Firestore:", error);
+                statusDiv.textContent = "❌ ERROR al publicar el aviso: " + error.message;
+                statusDiv.classList.remove('bg-yellow-100', 'text-yellow-700');
+                statusDiv.classList.add('bg-red-100', 'text-red-700');
+            }
+        }
+
+        // --- Lógica del Cliente (Smart TV) ---
+
+        /**
+         * Escucha los cambios en Firestore y actualiza la marquesina.
+         */
+        function setupBannerListener() {
+            if (!db || !isAuthReady) return;
+
+            const docRef = getBannerDocRef(db, userId);
+            const bannerContentDiv = document.getElementById('banner-content');
+            const bannerContainerDiv = document.getElementById('banner-container');
+
+            // Listener en tiempo real con onSnapshot
+            onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    console.log("Datos recibidos en el cliente (TV):", data);
+                    updateMarquee(data);
+                } else {
+                    console.log("No hay datos de banner disponibles.");
+                    updateMarquee({
+                        barName: "Sistema de Avisos",
+                        alertType: "OTROS",
+                        content: "Aún no hay avisos activos. Por favor, actualiza desde el Panel de Control.",
+                        imageUrl: "",
+                        timestamp: 0
+                    });
+                }
+            }, (error) => {
+                console.error("Error al escuchar Firestore:", error);
+                bannerContentDiv.innerHTML = `<span class="text-red-500">❌ ERROR DE CONEXIÓN: No se pueden obtener avisos.</span>`;
+            });
+        }
+
+        /**
+         * Actualiza el contenido visual y el estilo de la marquesina.
+         * @param {object} data - Los datos del banner.
+         */
+        function updateMarquee(data) {
+            const bannerContentDiv = document.getElementById('banner-content');
+            const bannerContainerDiv = document.getElementById('banner-container');
+
+            const { barName, alertType, content, imageUrl } = data;
+
+            // 1. Asignar estilo según el tipo de alerta
+            let typeLabel = '';
+            let styleClass = 'alert-otros';
+            let icon = '📢';
+
+            switch (alertType) {
+                case 'OFERTA':
+                    styleClass = 'alert-oferta';
+                    typeLabel = '¡OFERTA ESPECIAL!';
+                    icon = '🔥';
+                    break;
+                case 'TAPA':
+                    styleClass = 'alert-tapa';
+                    typeLabel = 'TAPA DEL DÍA';
+                    icon = '🍽️';
+                    break;
+                case 'LOTERÍA':
+                    styleClass = 'alert-lotería';
+                    typeLabel = 'LOTERÍA';
+                    icon = '🍀';
+                    break;
+                case 'EVENTO':
+                    styleClass = 'alert-evento';
+                    typeLabel = 'EVENTO DEPORTIVO';
+                    icon = '⚽';
+                    break;
+                case 'PERSONAL':
+                    styleClass = 'alert-personal';
+                    typeLabel = 'AVISO PERSONAL';
+                    icon = '🥳';
+                    break;
+                default:
+                    styleClass = 'alert-otros';
+                    typeLabel = 'AVISO';
+                    icon = '📣';
+            }
+
+            // Limpiar clases de estilo anteriores
+            bannerContainerDiv.className = 'shadow-2xl flex items-center';
+            bannerContainerDiv.classList.add(styleClass);
+
+            // 2. Crear el contenido HTML de la marquesina
+            let imageHtml = '';
+            if (imageUrl) {
+                // Agregar una imagen pequeña con un fallback en caso de error
+                imageHtml = `<img src="${imageUrl}" class="h-10 w-10 md:h-16 md:w-16 object-cover rounded-full mr-4 shadow-lg" alt="Imagen del Aviso" onerror="this.style.display='none';">`;
+            }
+
+            const htmlContent = `
+                ${imageHtml}
+                <span class="mr-6">⭐</span>
+                <span class="font-extrabold text-4xl">${barName.toUpperCase()}</span>
+                <span class="mx-8 text-3xl font-light">|</span>
+                <span class="text-2xl font-semibold">${icon} ${typeLabel}</span>
+                <span class="mx-8 text-3xl font-light">|</span>
+                <span class="text-3xl">${content}</span>
+                <span class="ml-6">⭐</span>
+            `;
+            
+            // 3. Establecer un factor de repetición alto (8 veces) para garantizar el bucle continuo
+            const repetitionFactor = 8; 
+            bannerContentDiv.innerHTML = htmlContent.repeat(repetitionFactor); 
+
+            // 4. Ajuste Dinámico de Velocidad (Duración)
+            // Calculamos la longitud total del texto repetido
+            const fullTextLength = content.length * repetitionFactor;
+            // Configuramos la velocidad (ej: 1 segundo por cada 10 caracteres, más 10s base)
+            const baseDuration = 10; 
+            const charsPerSecond = 10;
+            let newDuration = baseDuration + Math.ceil(fullTextLength / charsPerSecond);
+            
+            // Limitamos la duración máxima (para evitar animaciones absurdamente lentas) y mínima (para evitar saltos)
+            newDuration = Math.min(newDuration, 120); // Máximo 120 segundos
+            newDuration = Math.max(newDuration, 30);  // Mínimo 30 segundos (velocidad base original)
+            
+            // Aplicar la variable CSS para la nueva duración, asegurando que el contenido largo se mueva lentamente.
+            bannerContentDiv.style.setProperty('--marquee-duration', `${newDuration}s`);
+        }
+
+        // Iniciar la aplicación al cargar la página
+        initFirebase();
+    </script>
+</body>
+</html>

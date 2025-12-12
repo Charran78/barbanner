@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- themes.xml (móvil y tv) -->
+<resources>
+    <style name="Theme.BarBanner" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Colores navideños: rojo, verde, dorado -->
+        <item name="colorPrimary">#C62828</item>  <!-- Rojo navideño -->
+        <item name="colorPrimaryVariant">#B71C1C</item>
+        <item name="colorSecondary">#2E7D32</item>  <!-- Verde navideño -->
+        <item name="colorSecondaryVariant">#1B5E20</item>
+        <item name="colorTertiary">#FFD700</item>   <!-- Dorado -->
+    </style>
+</resources>
